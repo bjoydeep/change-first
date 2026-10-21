@@ -1,0 +1,140 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pr-analyzer
+  namespace: change-first
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pr-analyzer
+rules:
+  # Read ManagedCluster objects — needed to evaluate Placement label selectors (Cases A/B)
+  - apiGroups: ["cluster.open-cluster-management.io"]
+    resources: ["managedclusters"]
+    verbs: ["get", "list"]
+  # Read PlacementDecision — needed to resolve existing Placements (Case C)
+  - apiGroups: ["cluster.open-cluster-management.io"]
+    resources: ["placementdecisions"]
+    verbs: ["get", "list"]
+  # Inspect ManifestWorks to detect active policy delivery to clusters
+  # ManifestWorks live in the cluster's namespace on the hub (e.g. namespace=dsf-mc)
+  - apiGroups: ["work.open-cluster-management.io"]
+    resources: ["manifestworks"]
+    verbs: ["get", "list"]
+  # Scan ConfigurationPolicies for semantic conflicts (cluster-scoped list)
+  - apiGroups: ["policy.open-cluster-management.io"]
+    resources: ["configurationpolicies"]
+    verbs: ["get", "list"]
+  # Scan ArgoCD Applications for conflicts (if ACM GitOps is installed)
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pr-analyzer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pr-analyzer
+subjects:
+  - kind: ServiceAccount
+    name: pr-analyzer
+    namespace: change-first
+---
+# Targeted Secret read — allows pr-analyzer to read its own MSA token Secret
+# in each cluster's namespace on the hub. resourceNames scopes it to exactly
+# the pr-analyzer secret created by the ManagedServiceAccount addon.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pr-analyzer-token-reader
+  namespace: dsf-mc
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["pr-analyzer"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pr-analyzer-token-reader
+  namespace: dsf-mc
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pr-analyzer-token-reader
+subjects:
+  - kind: ServiceAccount
+    name: pr-analyzer
+    namespace: change-first
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pr-analyzer-token-reader
+  namespace: dsf-mc-02
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["pr-analyzer"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pr-analyzer-token-reader
+  namespace: dsf-mc-02
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pr-analyzer-token-reader
+subjects:
+  - kind: ServiceAccount
+    name: pr-analyzer
+    namespace: change-first
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pr-analyzer-token-reader
+  namespace: subbarao-hub
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["pr-analyzer"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pr-analyzer-token-reader
+  namespace: subbarao-hub
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pr-analyzer-token-reader
+subjects:
+  - kind: ServiceAccount
+    name: pr-analyzer
+    namespace: change-first
+---
+# ACM Search enforces the requesting SA's RBAC when returning results.
+# Binding 'view' gives read access to core resources across the hub so
+# Search returns results for objects we query. Tighten in production.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pr-analyzer-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: pr-analyzer
+    namespace: change-first

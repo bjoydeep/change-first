@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pr-analyzer
+  namespace: change-first
+  labels:
+    app: pr-analyzer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pr-analyzer
+  template:
+    metadata:
+      labels:
+        app: pr-analyzer
+    spec:
+      serviceAccountName: pr-analyzer
+      containers:
+        - name: pr-analyzer
+          image: quay.io/bjoydeep/pr-analyzer:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: pr-analyzer-secret
+            - configMapRef:
+                name: pr-analyzer-config
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

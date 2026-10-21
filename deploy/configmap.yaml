@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pr-analyzer-config
+  namespace: change-first
+  labels:
+    app: pr-analyzer
+data:
+  OPENAI_BASE_URL: "https://api.openai.com/v1"
+  MODEL_NAME: "gpt-4o"
+  AGENT_MAX_TURNS: "10"
+  ENABLED_SKILLS: "all"
+  TIER2_ENABLED: "false"
+  TIER2_LOG_LEVEL: "debug"
+  LOG_LEVEL: "info"

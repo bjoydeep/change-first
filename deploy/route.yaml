@@ -1,0 +1,16 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: pr-analyzer
+  namespace: change-first
+  labels:
+    app: pr-analyzer
+spec:
+  to:
+    kind: Service
+    name: pr-analyzer
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
