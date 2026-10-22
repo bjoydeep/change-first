@@ -1,5 +1,43 @@
 # Goal of this repo
 
+## How It Works — Conceptual Overview
+
+```mermaid
+flowchart TD
+    User("👤 Platform Engineer")
+    PR("🔀 Pull Request\nGitHub")
+
+    subgraph Hub["ACM Hub Cluster"]
+        Agent("pr-analyzer\nAgent Pod")
+
+        subgraph Det["Deterministic Layer\n(same input → same output)"]
+            BR("Blast Radius\nWhich clusters are targeted?")
+            SV("Schema Validation\nCorrect apiVersion, fields?")
+            RC("Relationship Checks\nExisting controller conflicts?")
+        end
+
+        subgraph LLMLayer["AI Reasoning Layer"]
+            LLM("LLM\nPayload risk · synthesis · explanation")
+        end
+
+        HubAPI("Hub k8s API\n+ cluster-proxy")
+    end
+
+    ManagedClusters("🖥️  Managed Clusters\ndsf-mc · dsf-mc-02 · ...")
+
+    User -->|"opens / amends PR"| PR
+    PR -->|"webhook on every push"| Agent
+    Agent --> Det
+    Det --> HubAPI
+    HubAPI -->|"Placement resolution\nobject state · managedFields"| ManagedClusters
+    Agent <-->|"reasoning"| LLM
+    Agent -->|"PR comment:\nblast radius · schema errors\nconflicts · payload risk"| PR
+    PR -->|"reads analysis"| User
+    User -->|"amend PR or ignore"| PR
+```
+
+> **Re-runs on every PR update. Bypassed on merge — a separate agent picks up post-deploy.**
+
 1. When a user makes a change to their repo and tries to push/merge a PR, the software that we create here needs to be called. 
 1. Once this code (Github handler) is called - its passed the full contents of the PR.
 1. The code will call an AI agent with the contents to do some analysis. See AI Agent Analysis section below.
